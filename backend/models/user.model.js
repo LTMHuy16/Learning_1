@@ -33,13 +33,20 @@ const UserSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Address",
     },
-    cart: {
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    wishlist: {
       type: Array,
       default: [],
     },
     cart: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
+    },
+    refreshToken: {
+      type: String,
     },
   },
   {

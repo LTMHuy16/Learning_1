@@ -1,17 +1,20 @@
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const { dbConnect } = require("./config/dbConnect");
+const { notFoundRouter, errorHandlerRouter } = require("./middleware/errorHandler.middleware");
+
 const app = express();
-const dotenv = require("dotenv").config();
 const PORT = process.env.PORT || 4000;
+const dotenv = require("dotenv").config();
 
 // IMPORT ROUTERS
 const userRouter = require("./routes/user.router");
 const bodyParser = require("body-parser");
-const { notFoundRouter, errorHandlerRouter } = require("./middleware/errorHandler.middleware");
 
 // CONFIG
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // ROUTES
 app.use("/api/user", userRouter);

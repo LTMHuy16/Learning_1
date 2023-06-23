@@ -6,7 +6,6 @@ const notFoundRouter = (req, res, next) => {
 const errorHandlerRouter = (error, req, res, next) => {
   if (!error) return;
 
-  console.log(res.statusCode);
   const statuscode = res.statusCode == 200 ? 500 : res.statusCode;
 
   res.status(statuscode).json({

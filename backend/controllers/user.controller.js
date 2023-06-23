@@ -1,5 +1,9 @@
-const { generateToken } = require("../config/JWT");
+const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const { generateToken } = require("../config/JWT");
+const { validatorMongoId } = require("../validators/mongoId.validator");
+const { generateRefreshToken } = require("../config/refreshToken");
+const { VARIABLES } = require("../utils/globalVariables");
 
 const createUser = async (req, res, next) => {
   try {
@@ -27,7 +31,58 @@ const loginUser = async (req, res, next) => {
     const isMatchedPass = await findUser.isPasswordMatched(password);
     if (!isMatchedPass) throw new Error("Password is not correctly.");
 
-    res.status(200).json({ user: { ...findUser._doc, token: generateToken(findUser._id) }, success: true });
+    const refreshToken = generateRefreshToken(findUser._id);
+    const updateUser = await User.findByIdAndUpdate(findUser._id, { refreshToken }, { new: true });
+    if (!updateUser) throw new Error("Can't not create refresh token.");
+
+    res.cookie(VARIABLES.refreshToken, refreshToken, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ user: { ...updateUser._doc, token: generateToken(findUser._id) }, success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const handleRefreshToken = async (req, res, next) => {
+  try {
+    const cookies = req.cookies;
+    if (!cookies[VARIABLES.refreshToken]) throw new Error("No refresh token in cookie.");
+    const refreshToken = cookies[VARIABLES.refreshToken];
+
+    const user = await User.findOne({ refreshToken });
+    if (!user) throw new Error("Can't found user with this refresh token.");
+
+    jwt.verify(refreshToken, process.env.JWT_SECRET, (error, decoded) => {
+      if (error || user._id != decoded.id) throw new Error("Some thing went wrong verify user information.");
+    });
+
+    const accessToken = generateToken(user._id);
+
+    res.status(200).json({ accessToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const userLogout = async (req, res, next) => {
+  try {
+    const cookies = req.cookies;
+    if (!cookies[VARIABLES.refreshToken]) throw new Error("No refresh token in cookie.");
+    const refreshToken = cookies[VARIABLES.refreshToken];
+
+    const user = await User.findOne({ refreshToken });
+    if (!user) throw new Error("Can't found user with this refresh token.");
+
+    if (user) {
+      const clearTokenUser = await User.findOneAndUpdate({ refreshToken, _id: user._id }, { refreshToken: "" });
+      if (!clearTokenUser) throw new Error("Can't not update refreshToken.");
+    }
+
+    res.clearCookie(VARIABLES.refreshToken, { httpOnly: true, secure: true });
+    res.sendStatus(204);
   } catch (error) {
     next(error);
   }
@@ -47,6 +102,8 @@ const getSingleUser = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    validatorMongoId(id);
+
     const findUser = await User.findById(id);
     if (!findUser) throw new Error("Can't not found user.");
 
@@ -60,7 +117,39 @@ const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    validatorMongoId(id);
+
     const findUser = await User.findByIdAndUpdate(id, { ...req.body }, { new: true });
+    if (!findUser) throw new Error("Can't not found user.");
+
+    res.status(200).json({ user: findUser, success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const blockUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    validatorMongoId(id);
+
+    const findUser = await User.findByIdAndUpdate(id, { isBlocked: true }, { new: true });
+    if (!findUser) throw new Error("Can't not found user.");
+
+    res.status(200).json({ user: findUser, success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const unBlockUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    validatorMongoId(id);
+
+    const findUser = await User.findByIdAndUpdate(id, { isBlocked: false }, { new: true });
     if (!findUser) throw new Error("Can't not found user.");
 
     res.status(200).json({ user: findUser, success: true });
@@ -72,6 +161,8 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    validatorMongoId(id);
 
     const deletedUser = await User.findByIdAndRemove(id);
     if (!deletedUser) throw new Error("Can't not found user.");
@@ -87,6 +178,10 @@ module.exports = {
   loginUser,
   getAllUser,
   getSingleUser,
+  handleRefreshToken,
+  blockUser,
+  unBlockUser,
   updateUser,
   deleteUser,
+  userLogout,
 };

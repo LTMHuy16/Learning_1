@@ -14,8 +14,10 @@ const authMiddleware = async (req, res, next) => {
 
     const user = await User.findById(decoded?.id);
 
-    if (user) next();
-    else {
+    if (user) {
+      req.user = user;
+      next();
+    } else {
       res.status(401);
       throw new Error("Not user found with authentication id.");
     }
@@ -24,4 +26,19 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware };
+const isAdmin = async (req, res, next) => {
+  try {
+    const { user } = req;
+
+    if (!user || !user.role || user.role != "admin") {
+      res.status(401);
+      throw new Error("You must be admin to access this resources.");
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { authMiddleware, isAdmin };
