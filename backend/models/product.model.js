@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
+const slugify = require("slugify");
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -10,7 +10,6 @@ const ProductSchema = new mongoose.Schema(
     },
     slug: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
     },
@@ -23,15 +22,16 @@ const ProductSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      type: String,
+      required: true,
     },
     brand: {
       type: String,
-      enum: ["Apple", "Samsung", "Lenovo"],
+      required: true,
     },
     sold: {
-      
+      type: Number,
+      default: 0,
     },
     quantity: {
       type: Number,
@@ -43,7 +43,7 @@ const ProductSchema = new mongoose.Schema(
     },
     color: {
       type: String,
-      enum: ["Black", "Brown", "Red"],
+      required: true,
     },
     ratings: [
       {
@@ -59,5 +59,9 @@ const ProductSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+ProductSchema.pre("save", function () {
+  this.slug = slugify(this.title, { replacement: "-", lower: true });
+});
 
 module.exports = mongoose.model("Product", ProductSchema);

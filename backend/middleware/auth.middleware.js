@@ -4,7 +4,7 @@ const User = require("../models/user.model");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    let token = req.headers?.authorization.toString();
+    let token = req.headers?.authorization?.toString();
     if (!token || !token.startsWith("Bearer")) throw new Error("There is no token attached.");
 
     token = token.split(" ")[1];
@@ -28,6 +28,7 @@ const authMiddleware = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
+    // user from `authMiddleware` function
     const { user } = req;
 
     if (!user || !user.role || user.role != "admin") {

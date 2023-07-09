@@ -173,6 +173,28 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const updatePassword = async (req, res, next) => {
+  try {
+    const { _id, password } = req.body;
+
+    if (!password) throw new Error("Password is required.");
+    if (!_id) throw new Error("User Id is required.");
+
+    validatorMongoId(_id);
+
+    const user = await User.findById(_id);
+    if (!user) throw new Error("Can not find user.");
+
+    user.password = password;
+    const updatedUser = await user.save();
+    if (!updateUser) throw new Error("Can not update user");
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createUser,
   loginUser,
@@ -184,4 +206,5 @@ module.exports = {
   updateUser,
   deleteUser,
   userLogout,
+  updatePassword,
 };
